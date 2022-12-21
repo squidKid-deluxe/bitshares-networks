@@ -14,6 +14,7 @@ MIT License
 # STANDARD MODULES
 import json
 import math
+import time
 from os import system
 from os.path import exists
 from shutil import rmtree
@@ -230,106 +231,117 @@ def cache_weights(rpc):
     return weights
 
 
-def map_network(rpc, weights, choice, is_balance):
+def map_network(rpc, weights, choice, is_balance, pause):
     """
     build a pyvis network map of the BitShares Liquidity Pools
     :param weights: will be used for edge thickness
     :return:
     """
-    name_cache = json_ipc("name_cache.txt")
-    ticker_cache = json_ipc("ticker_cache.txt")
-    usd_feed = rpc_get_feed(rpc, "2.4.294")
-    btc_feed = rpc_get_feed(rpc, "2.4.295")
-    bgcolor = "#222222" if DARK_THEME else "#888888"
-    font_color = "#888888" if DARK_THEME else "#222222"
+    while True:
+        name_cache = json_ipc("name_cache.txt")
+        ticker_cache = json_ipc("ticker_cache.txt")
+        usd_feed = rpc_get_feed(rpc, "2.4.294")
+        btc_feed = rpc_get_feed(rpc, "2.4.295")
+        bgcolor = "#222222" if DARK_THEME else "#888888"
+        font_color = "#888888" if DARK_THEME else "#222222"
 
-    node_colors = []
-    for symbol in [i["symbol"] for i in name_cache.values()]:
-        # re-declare the color map logic with a new symbol
-        node_color_mapping = {
-            COLOR[0]: "HONEST" in symbol,
-            COLOR[1]: ("GDEX" in symbol) or (symbol in ["DEFI", "GAT"]),
-            COLOR[2]: (symbol in ["GOLD", "SILVER", "CNY 1.0"]) or (len(symbol) == 3),
-            COLOR[3]: ("BTWTY" in symbol) or ("TWENTIX" in symbol),
-            COLOR[4]: "IOB" in symbol,
-            COLOR[5]: "CRUDE" in symbol,
-            COLOR[6]: "XBTSX" in symbol,
-            COLOR[7]: symbol in ["NIUSHI", "NSNFT"],
-            COLOR[8]: symbol in ["GOLDBACK", "QUINT", "BEOS"],
-            COLOR[9]: True,
-        }
-        for color, condition in node_color_mapping.items():
-            if condition:
-                node_colors.append(color)
-                break
+        node_colors = []
+        for symbol in [i["symbol"] for i in name_cache.values()]:
+            # re-declare the color map logic with a new symbol
+            node_color_mapping = {
+                COLOR[0]: "HONEST" in symbol,
+                COLOR[1]: ("GDEX" in symbol) or (symbol in ["DEFI", "GAT"]),
+                COLOR[2]: (symbol in ["GOLD", "SILVER", "CNY 1.0"]) or (len(symbol) == 3),
+                COLOR[3]: ("BTWTY" in symbol) or ("TWENTIX" in symbol),
+                COLOR[4]: "IOB" in symbol,
+                COLOR[5]: "CRUDE" in symbol,
+                COLOR[6]: "XBTSX" in symbol,
+                COLOR[7]: symbol in ["NIUSHI", "NSNFT"],
+                COLOR[8]: symbol in ["GOLDBACK", "QUINT", "BEOS"],
+                COLOR[9]: True,
+            }
+            for color, condition in node_color_mapping.items():
+                if condition:
+                    node_colors.append(color)
+                    break
 
-    node_title = [
-        "Value of {}:\n\nBTS: {:.3f}\nUSD: {:.3f}\nBTC: {:.3f}".format(
-            symbol,
-            1 / (ticker_cache[symbol] + NIL),
-            1 / ((ticker_cache[symbol] + NIL) / usd_feed),
-            1 / ((ticker_cache[symbol] + NIL) / btc_feed),
-        )
-        for symbol in name_cache.keys()
-    ]
-    net = Network(
-        height=f"{HEIGHT}px",
-        width="100%",
-        bgcolor=bgcolor,
-        font_color=font_color,
-        select_menu=True,
-    )
-    net.add_nodes(
-        list(name_cache.keys()),
-        label=[i["symbol"] for i in list(name_cache.values())],
-        color=node_colors,
-        size=[10 for _ in name_cache],
-        title=node_title,
-    )
-    net.add_node("", label="", image="./images/bitshares.png", size=500, shape="image", mass=0.5)
-    net.add_node(" ", label="", image="./images/pool_network.png", size=100, shape="image", mass=0.7)
-    dprint("\n\n")
-    dprint(net.get_nodes())
-    pool_cache = json_ipc("pool_cache.txt")
-    # calculate max balance or volume weight based on user choice
-    # at the same time, if user choice is 1 only ATTACH some weights
-    max_w = max(
-        n["wt_balance"] if is_balance else n["wt_volume"]
-        for n in weights
-        if choice != 1 or n["pool_id"] in ATTACH
-    )
-    dprint(max_w)
-    max_w /= SCALE_WEIGHT
-    for weight in weights:
-        if all(
-            [
-                weight["asset_a"] in name_cache,
-                weight["asset_b"] in name_cache,
-                (not DETACH_UNFUNDED or weight["wt_balance"] > 0),
-                (weight["asset_a"] not in DETACH or choice != 2),
-                (weight["asset_b"] not in DETACH or choice != 2),
-                ((weight["pool_id"] in ATTACH) or choice != 1),
-            ]
-        ):
-            net.add_edge(
-                weight["asset_a"],
-                weight["asset_b"],
-                value=weight["wt_balance"] / max_w if is_balance else weight["wt_volume"] / max_w,
-                title="{}\n{} {}\n\n{} {}\n{} {}\n\nprice   {}\ninverse {}".format(
-                    weight["pool_id"],
-                    pool_cache[weight["pool_id"]]["share_asset"],
-                    weight["pool_name"],
-                    weight["asset_a"],
-                    str(weight["balance_a"]),
-                    weight["asset_b"],
-                    str(weight["balance_b"]),
-                    str(sigfig(weight["price"])),
-                    str(sigfig(weight["inverse"])),
-                ),
+        node_title = [
+            "Value of {}:\n\nBTS: {:.3f}\nUSD: {:.3f}\nBTC: {:.3f}".format(
+                symbol,
+                1 / (ticker_cache[symbol] + NIL),
+                1 / ((ticker_cache[symbol] + NIL) / usd_feed),
+                1 / ((ticker_cache[symbol] + NIL) / btc_feed),
             )
+            for symbol in name_cache.keys()
+        ]
+        net = Network(
+            height=f"{HEIGHT}px",
+            width="100%",
+            bgcolor=bgcolor,
+            font_color=font_color,
+            # select_menu=True,
+        )
+        net.add_nodes(
+            list(name_cache.keys()),
+            label=[i["symbol"] for i in list(name_cache.values())],
+            color=node_colors,
+            size=[10 for _ in name_cache],
+            title=node_title,
+        )
+        net.add_node("", label="", image="./images/bitshares.png", size=500, shape="image", mass=0.5)
+        net.add_node(" ", label="", image="./images/pool_network.png", size=100, shape="image", mass=0.7)
+        dprint("\n\n")
+        dprint(net.get_nodes())
+        pool_cache = json_ipc("pool_cache.txt")
+        # calculate max balance or volume weight based on user choice
+        # at the same time, if user choice is 1 only ATTACH some weights
+        max_w = max(
+            n["wt_balance"] if is_balance else n["wt_volume"]
+            for n in weights
+            if choice != 1 or n["pool_id"] in ATTACH
+        )
+        dprint(max_w)
+        max_w /= SCALE_WEIGHT
+        for weight in weights:
+            if all(
+                [
+                    weight["asset_a"] in name_cache,
+                    weight["asset_b"] in name_cache,
+                    (not DETACH_UNFUNDED or weight["wt_balance"] > 0),
+                    (weight["asset_a"] not in DETACH or choice != 2),
+                    (weight["asset_b"] not in DETACH or choice != 2),
+                    ((weight["pool_id"] in ATTACH) or choice != 1),
+                ]
+            ):
+                net.add_edge(
+                    weight["asset_a"],
+                    weight["asset_b"],
+                    value=weight["wt_balance"] / max_w if is_balance else weight["wt_volume"] / max_w,
+                    title="{}\n{} {}\n\n{} {}\n{} {}\n\nprice   {}\ninverse {}".format(
+                        weight["pool_id"],
+                        pool_cache[weight["pool_id"]]["share_asset"],
+                        weight["pool_name"],
+                        weight["asset_a"],
+                        str(weight["balance_a"]),
+                        weight["asset_b"],
+                        str(weight["balance_b"]),
+                        str(sigfig(weight["price"])),
+                        str(sigfig(weight["inverse"])),
+                    ),
+                )
 
-    net.show_buttons(filter_=BUTTONS)
-    net.show("liquidity_pools.html")
+        if choice != 4:
+            net.show("liquidity_pools.html")
+            net.show_buttons(filter_=BUTTONS)
+            return
+        else:
+            print("saving graph...")
+            net.save_graph("liquidity_pools.html")
+            system("rm " + PATH + "/ticker_cache.txt")
+            time.sleep(pause)
+            # handshake will likely have timed out, so get fresh rpc
+            # while we freshen the data
+            _, rpc = initialize()
 
 
 def initialize():
@@ -356,6 +368,7 @@ def menu():
                 "ATTACH Configured Pools Only",
                 "DETACH Configured Tokens",
                 "Clear Cache",
+                "Run Headless For Server"
             ]
         )
     )
@@ -364,12 +377,16 @@ def menu():
     print("\nScale pool size in BTS terms by...")
     dispatch = dict(enumerate(["24hr Volume", "Total A + B Balance"]))
     is_balance = get_choice(dispatch)
+    pause = 0
+    if choice == 4:
+        print(logo())
+        print("\nPause time between server refresh:")
+        pause = int(input())
     if choice == 3:
         # clear cache
         rmtree(PATH)
-        system(f"mkdir {PATH}")
         main()
-    return choice, is_balance
+    return choice, is_balance, pause
 
 
 def get_choice(dispatch):
@@ -391,8 +408,8 @@ def main():
     print(logo())
     print("\n\nCaching data...")
     weights, rpc = initialize()
-    choice, is_balance = menu()
-    map_network(rpc, weights, choice, is_balance)
+    choice, is_balance, pause = menu()
+    map_network(rpc, weights, choice, is_balance, pause)
 
 
 if __name__ == "__main__":
