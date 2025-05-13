@@ -15,25 +15,22 @@ DARK_THEME = True
 # Use these bitshares nodes to gather rpc data
 NODES = [
     "wss://api.bts.mobi/wss",
-    "wss://newyork.bitshares.im/wss",
-    "wss://bts.open.icowallet.net/ws",
-    "wss://api.dex.trading",
-    "wss://eu.nodes.bitshares.ws/wss",
-    "wss://dex.iobanker.com/wss",
-    "wss://api.bitshares.bhuz.info",
-    "wss://public.xbts.io/ws",
-    "wss://api-us.61bts.com",
-    "wss://btsws.roelandp.nl/ws",
-    "wss://node.xbts.io/wss",
-    "wss://hongkong.bitshares.im",
-    "wss://bts.mypi.win/wss",
-    "wss://cloud.xbts.io/ws",
+    "wss://newyork.bitshares.im/ws",
     "wss://api.bitshares.info",
-    "wss://api.61bts.com",
-    "wss://node1.deex.exchange/wss",
+    "wss://bts.open.icowallet.net/ws",
+    "wss://api.dex.trading/wss",
+    "wss://eu.nodes.bitshares.ws/wss",
+    "wss://api-us.61bts.com/wss",
+    "wss://cloud.xbts.io/ws",
+    "wss://dex.iobanker.com/wss",
+    "wss://hongkong.bitshares.im/wss",
+    "wss://bts.mypi.win/wss",
+    "wss://public.xbts.io/wss",
+    "wss://node.xbts.io/wss",
+    "wss://btsws.roelandp.nl/wss",
+    "wss://singapore.bitshares.im/wss",
+    "wss://api.bts.btspp.io:10100/wss",
     "wss://api.btslebin.com/wss",
-    "wss://api.bts.btspp.io:10100/ws",
-    "wss://singapore.bitshares.im/ws",
 ]
 # menu option to exclude these from the map
 DETACH = [
@@ -56,8 +53,8 @@ ATTACH = [
 BUTTONS = ["physics", "edges", "nodes"]
 # when making object rpc calls this many objects per call
 CHUNK = 10
-# pixel height of network map
-HEIGHT = 2160
+# viewport height of network map
+HEIGHT = 90
 # asset groups
 COLOR = [
     "#8e7cc3",  # purple

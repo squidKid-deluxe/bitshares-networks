@@ -15,6 +15,7 @@ MIT License
 import json
 import math
 import time
+import sys
 from os import system
 from os.path import exists
 from shutil import rmtree
@@ -43,6 +44,9 @@ from rpc import (
     rpc_get_feed,
 )
 from utilities import chunks, json_ipc, dprint, logo, PATH, sigfig, NIL
+
+
+FILENAME = "liquidity_pools.html" if len(sys.argv) == 1 else sys.argv[1]
 
 
 def init_pipe():
@@ -242,20 +246,21 @@ def map_network(rpc, weights, choice, is_balance, pause):
         ticker_cache = json_ipc("ticker_cache.txt")
         usd_feed = rpc_get_feed(rpc, "2.4.294")
         btc_feed = rpc_get_feed(rpc, "2.4.295")
-        bgcolor = "#222222" if DARK_THEME else "#888888"
-        font_color = "#888888" if DARK_THEME else "#222222"
+        bgcolor = "#111111" if DARK_THEME else "#aaaaaa"
+        font_color = "#aaaaaa" if DARK_THEME else "#111111"
 
         node_colors = []
         for symbol in [i["symbol"] for i in name_cache.values()]:
             # re-declare the color map logic with a new symbol
             node_color_mapping = {
-                COLOR[0]: "HONEST" in symbol,
+                COLOR[0]: "XBTSX" in symbol,
                 COLOR[1]: ("GDEX" in symbol) or (symbol in ["DEFI", "GAT"]),
-                COLOR[2]: (symbol in ["GOLD", "SILVER", "CNY 1.0"]) or (len(symbol) == 3),
+                COLOR[2]: (symbol in ["GOLD", "SILVER", "CNY 1.0"])
+                or (len(symbol) == 3),
                 COLOR[3]: ("BTWTY" in symbol) or ("TWENTIX" in symbol),
-                COLOR[4]: "IOB" in symbol,
+                COLOR[4]: "HONEST" in symbol,
                 COLOR[5]: "CRUDE" in symbol,
-                COLOR[6]: "XBTSX" in symbol,
+                COLOR[6]: "IOB" in symbol,
                 COLOR[7]: symbol in ["NIUSHI", "NSNFT"],
                 COLOR[8]: symbol in ["GOLDBACK", "QUINT", "BEOS"],
                 COLOR[9]: True,
@@ -275,7 +280,7 @@ def map_network(rpc, weights, choice, is_balance, pause):
             for symbol in name_cache.keys()
         ]
         net = Network(
-            height=f"{HEIGHT}px",
+            height=f"{HEIGHT}vh",
             width="100%",
             bgcolor=bgcolor,
             font_color=font_color,
@@ -288,8 +293,22 @@ def map_network(rpc, weights, choice, is_balance, pause):
             size=[10 for _ in name_cache],
             title=node_title,
         )
-        net.add_node("", label="", image="./images/bitshares.png", size=500, shape="image", mass=0.5)
-        net.add_node(" ", label="", image="./images/pool_network.png", size=100, shape="image", mass=0.7)
+        net.add_node(
+            "",
+            label="",
+            image="./images/bitshares.png",
+            size=500,
+            shape="image",
+            mass=0.5,
+        )
+        net.add_node(
+            " ",
+            label="",
+            image="./images/pool_network.png",
+            size=100,
+            shape="image",
+            mass=0.7,
+        )
         dprint("\n\n")
         dprint(net.get_nodes())
         pool_cache = json_ipc("pool_cache.txt")
@@ -316,7 +335,9 @@ def map_network(rpc, weights, choice, is_balance, pause):
                 net.add_edge(
                     weight["asset_a"],
                     weight["asset_b"],
-                    value=weight["wt_balance"] / max_w if is_balance else weight["wt_volume"] / max_w,
+                    value=weight["wt_balance"] / max_w
+                    if is_balance
+                    else weight["wt_volume"] / max_w,
                     title="{}\n{} {}\n\n{} {}\n{} {}\n\nprice   {}\ninverse {}".format(
                         weight["pool_id"],
                         pool_cache[weight["pool_id"]]["share_asset"],
@@ -331,12 +352,25 @@ def map_network(rpc, weights, choice, is_balance, pause):
                 )
 
         if choice != 4:
-            net.show("liquidity_pools.html")
-            net.show_buttons(filter_=BUTTONS)
+            net.save_graph(FILENAME)
+            with open(FILENAME) as handle:
+                html = handle.read()
+                handle.close()
+            html = html.split('<style type="text/css">')
+            html[1] = html[1].split("</style>")[1]
+            html = (
+                html[0]
+                + '<link href="poolstyle.css" rel="stylesheet"></link>'
+                + html[1]
+            )
+            with open(FILENAME, "w") as handle:
+                handle.write(html)
+                handle.close()
+            # net.show_buttons(filter_=BUTTONS)
             return
         else:
             print("saving graph...")
-            net.save_graph("liquidity_pools.html")
+            net.save_graph(FILnENAME)
             system("rm " + PATH + "/ticker_cache.txt")
             time.sleep(pause)
             # handshake will likely have timed out, so get fresh rpc
@@ -368,7 +402,7 @@ def menu():
                 "ATTACH Configured Pools Only",
                 "DETACH Configured Tokens",
                 "Clear Cache",
-                "Run Headless For Server"
+                "Run Headless For Server",
             ]
         )
     )
