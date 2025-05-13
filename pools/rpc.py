@@ -11,6 +11,7 @@ LIQUIDITY POOL MAPPER
 import time
 from json import dumps as json_dumps
 from json import loads as json_loads
+from random import shuffle
 
 # THIRD PARTY MODULES
 from websocket import create_connection as wss
@@ -23,14 +24,19 @@ def wss_handshake():
     """
     Create a websocket handshake
     """
+    nodes = NODES[::]
+    shuffle(nodes)
     while True:
-        nodes = NODES[::]
-        nodes.append(nodes.pop(0))
-        node = nodes[0]
-        start = time.time()
-        rpc = wss(node, timeout=3)
-        if time.time() - start < 3:
-            break
+        try:
+            nodes.append(nodes.pop(0))
+            node = nodes[0]
+            start = time.time()
+            rpc = wss(node, timeout=3)
+            if time.time() - start < 3:
+                break
+        except Exception as e:
+            print(e)
+    print(f"Successfully connected to {node}!")
     return rpc
 
 

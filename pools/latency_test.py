@@ -441,7 +441,7 @@ def plot(geo, speed, mean_speed):
     plt.xticks([])
     plt.yticks([])
     # plot basemap
-    axis.imshow(plt.imread("images/basemap.png"), extent=[-180, 180, -90, 90])
+    axis.imshow(plt.imread(PATH + "images/basemap.png"), extent=[-180, 180, -90, 90])
     fig.tight_layout()
     # plot transparent magenta signal strength at each location
     lons = []

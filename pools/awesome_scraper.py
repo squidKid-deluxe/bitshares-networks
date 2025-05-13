@@ -5,6 +5,7 @@ from PIL import Image
 import os
 import json
 
+PATH = str(os.path.dirname(os.path.abspath(__file__))) + "/"
 
 def main():
     URL = "https://raw.githubusercontent.com/bitshares/awesome-bitshares/master/README.md"
@@ -124,8 +125,8 @@ def main():
     # exit()
 
     # filepaths
-    fp_in = "./latency_maps/map_*.png"
-    fp_out = "./images/map.gif"
+    fp_in = PATH + "latency_maps/map_*.png"
+    fp_out = PATH + "images/map.gif"
 
     # https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
 

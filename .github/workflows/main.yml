@@ -1,0 +1,42 @@
+name: Update & Publish
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # Runs daily at midnight UTC
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        id: cache-pip
+        with:
+          path: ~/.cache/pip  # Path where pip caches packages
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}  # Unique key based on requirements.txt hash
+          restore-keys: |
+            ${{ runner.os }}-pip-  # Fallback to previous cache if exact key isn't found
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip  # Upgrade pip first for reliability
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi  # Install only if requirements.txt exists
+
+      - name: Update index.html
+        run: cd pools; python3 main.py; cd ..
+
+      - name: Commit and push to GitHub Pages
+        run: |
+          git add .
+          git commit -m "Update via workflow"  # Create a commit
+          git push origin HEAD:gh-pages  # Push to gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Uses the default token for authentication
