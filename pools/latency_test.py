@@ -1085,6 +1085,9 @@ def thresh(previous_unique):
     with open("nodes.html", "w") as handle:
         handle.write(to_html(previous_unique, font="mono", newlines="", size="0.9vw"))
         handle.close()
+    with open("nodes.json", "w") as handle:
+        handle.write(json_dump(previous_unique))
+        handle.close()
 
     return previous_unique
 
