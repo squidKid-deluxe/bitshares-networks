@@ -5,6 +5,11 @@ on:
     - cron: "0 0 * * *"  # Runs daily at midnight UTC
   workflow_dispatch:  # Allows manual triggering
 
+permissions:
+  pages: write  # For Pages deployment
+  id-token: write  # Required for OIDC token
+  contents: write  # Often needed for reading repository contents
+
 jobs:
   update:
     runs-on: ubuntu-latest
