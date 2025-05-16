@@ -41,6 +41,13 @@ import matplotlib.cbook as cbook
 from websocket import create_connection as wss
 import websocket
 import requests
+import socket
+
+import asyncio
+import time
+import aiohttp
+import json
+from datetime import datetime  # For ISO date conversion
 
 # CUSTOM MODULES
 from bitshares_nodes import Nodes
@@ -63,7 +70,7 @@ GITHUB_MASTER = False  # Check only Bitshares UI Master List
 ONLY = False  # Test just Nodes.short_list() list (ignore all lists above)
 EXCLUDE = True  # Exclude known bad nodes in Nodes.exclude()
 # PLOT LATENCY MAP
-GEOLOCATE = "http://ip-api.com/json/"
+GEOLOCATE = "http://ip-api.com/batch/"
 IPAPI = True  # set to true to add geolocation data
 PLOT = True  # set to true to plot
 MAP_SAVE = True
@@ -98,43 +105,56 @@ PATH = str(os.path.dirname(os.path.abspath(__file__))) + "/"
 
 # REMOTE PROCEDURE CALL TO BITSHARES PUBLIC API NODES
 # ######################################################################
-def wss_handshake(node):
-    """
-    Create a websocket connection to a BitShares public RPC node
-    """
-    return wss(node, timeout=TIMEOUT)
-
-
-def wss_query(rpc, params):
-    """
-    Send and recieve RPC to public node on open websocket connection
-    """
-    query = json_dump({"method": "call", "params": params, "jsonrpc": "2.0", "id": 1})
-    rpc.send(query)
-    ret = json_load(rpc.recv())
+async def wss_handshake(node):
+    """Asynchronously create a websocket connection to a BitShares public RPC node."""
+    if not hasattr(wss_handshake, "session") or not wss_handshake.session:
+        wss_handshake.session = aiohttp.ClientSession()
     try:
-        ret = ret["result"]  # if there is result key take it
-    except BaseException:
-        pass
-    return ret
+        ws = await wss_handshake.session.ws_connect(node, timeout=TIMEOUT)  # Await the connection
+        return ws  # Return the websocket object
+    except Exception as e:
+        print(f"Error during handshake with {node}: {e}")
+        return None
 
+async def wss_query(rpc, params):
+    """Asynchronously send and receive RPC to a public node."""
+    query = json.dumps({"method": "call", "params": params, "jsonrpc": "2.0", "id": 1})
+    try:
+        await rpc.send_str(query)
+        msg = await rpc.receive()
+        if msg.type == aiohttp.WSMsgType.TEXT:
+            ret = json.loads(msg.data)
+            try:
+                ret = ret["result"]  # Extract result if available
+            except KeyError:
+                pass  # No result key; return the full response
+            return ret
+        elif msg.type == aiohttp.WSMsgType.CLOSED:
+            print(f"Websocket closed with code {rpc.close_code}")
+            return None
+        elif msg.type == aiohttp.WSMsgType.ERROR:
+            print(f"Websocket error: {rpc.exception()}")
+            return None
+    except Exception as e:
+        print(f"Error during query: {e}")
+        return None
 
-def rpc_chain_id(rpc):
-    """
-    Get the chain ID to confirm it matches mainnet ID
-    """
-    ret = wss_query(rpc, ["database", "get_chain_properties", []])
-    return ret["chain_id"]
+async def rpc_chain_id(rpc):
+    """Asynchronously get the chain ID."""
+    ret = await wss_query(rpc, ["database", "get_chain_properties", []])
+    if ret:
+        return ret.get("chain_id")  # Safely return chain_id
+    return None
 
-
-def rpc_blocktime_participation(rpc):
-    """
-    Determine if node is returning stale data
-    """
-    ret = wss_query(rpc, ["database", "get_objects", [["2.1.0"]]])[0]
-    unix = from_iso_date(ret["time"])
-    participation = bin(int(ret["recent_slots_filled"])).count("1") / 1.28
-    return unix, participation
+async def rpc_blocktime_participation(rpc):
+    """Asynchronously get block time and participation."""
+    ret = await wss_query(rpc, ["database", "get_objects", [["2.1.0"]]])
+    if ret and len(ret) > 0:
+        ret = ret[0]  # Access the first element
+        unix = from_iso_date(ret["time"])
+        participation = (bin(int(ret["recent_slots_filled"])).count("1") / 1.28)  # Calculate participation
+        return unix, participation
+    return None, None
 
 
 # TEXT PIPE INTERPROCESS COMMUNICATION
@@ -644,35 +664,49 @@ def test_seeds():
     return seeds, hosts, cities
 
 
-def ping(node, num):
-    """
-    ping the blockchain and return latency
-    subprocess of thresh() with IPC via num
-    """
+async def ping(node):
+    """Asynchronous version of your ping function."""
+    rpc = None
+    result = 222222  # Default return value in case of failure
+
     try:
         start = time.time()
-        rpc = wss_handshake(node)
+        rpc = await wss_handshake(node)
+        if rpc is None:
+            return result  # Handshake failed
+        
         ping_latency = time.time() - start
-        chain = rpc_chain_id(rpc)
-        blocktime, participation = rpc_blocktime_participation(rpc)
+        chain = await rpc_chain_id(rpc)
+        if chain is None:
+            return result  # Chain ID retrieval failed
+
+        blocktime, participation = await rpc_blocktime_participation(rpc)
+        if blocktime is None or participation is None:
+            return result  # Blocktime or participation retrieval failed
+
         block_latency = time.time() - blocktime
+
         if chain != ID:
-            num.value = 333333
-            print("chain", chain)
+            result = 333333
         elif participation < 90:
-            num.value = 444444
-            print("participation", participation)
+            result = 444444
         elif block_latency < (ping_latency + 10):
-            num.value = ping_latency
+            result = ping_latency
         else:
-            num.value = 111111
-            print("block latency", block_latency)
             if TESTNET:
-                num.value = ping_latency
-                print("testnet")
+                result = ping_latency
+            else:
+                result = 111111
+
     except Exception as error:
-        num.value = 222222
-        print(str(type(error).__name__) + " " + str(error.args))
+        print(f"Error in ping for {node}: {str(type(error).__name__)} {str(error.args)}")
+
+    finally:
+        if rpc and not rpc.closed:
+            await rpc.close()
+
+    return result
+
 
 
 def select_nodes():
@@ -729,99 +763,165 @@ def select_nodes():
 
 def geolocation(unique, pinged):
     """
-    Use ip-api to get lattitude and longitude for each node
+    Use ip-api to get latitude and longitude for each node
     """
-    # print("unique, pinged", unique, pinged)
     ret = {}
     geo = []
     hosts = []
     cities = []
-    for item, _ in enumerate(unique):
-        time.sleep(10)
+    
+    # Batch size
+    batch_size = 100
+    
+    # Process unique IPs in batches
+    for i in range(0, len(unique), batch_size):
+        batch = unique[i:i + batch_size]
+        time.sleep(10)  # Sleep to avoid hitting rate limits
+        
         if IPAPI:
             print("geolocating...")
-            # strip wws://, /wss, /ws, and /
-            public_ip = (validate([unique[item]])[0])[6:]
-            public_ip = public_ip.split(":")[0]
-            public_ip = public_ip.split("/")[0]
-            # public_ip-api.com has trouble with these
-            # parsed manually at public_ipinfo.info instead
-            if public_ip == "freedom.bts123.cc":
-                public_ip = "121.42.8.104"
-            if public_ip == "ws.gdex.top":
-                public_ip = "106.15.82.97"
-            if public_ip == "bitshares.dacplay.org":
-                public_ip = "120.55.181.181"
-            if public_ip == "crazybit.online":
-                public_ip = "39.108.95.236"
-            if public_ip == "citadel.li":
-                public_ip = "37.228.129.75"
-            if public_ip == "bts.liuye.tech":
-                public_ip = "27.195.68.51"
-            if public_ip == "japan.bitshares.apasia.tech":
-                # resolves correct to 198.13.34.161, but
-                # incorrectly plots in minneapolis, usa
-                public_ip = "133.11.93.0"  # tokyo university
-            url = GEOLOCATE + public_ip
-            print(url)
+            # Prepare the list of public IPs
+            public_ips = []
+            for item in batch:
+                public_ip = (validate([item])[0])[6:]
+                public_ip = public_ip.split(":")[0].split("/")[0]
+                
+                # Handle specific IP replacements
+                ip_replacements = {
+                    "freedom.bts123.cc": "121.42.8.104",
+                    "ws.gdex.top": "106.15.82.97",
+                    "bitshares.dacplay.org": "120.55.181.181",
+                    "crazybit.online": "39.108.95.236",
+                    "citadel.li": "37.228.129.75",
+                    "bts.liuye.tech": "27.195.68.51",
+                    "japan.bitshares.apasia.tech": "133.11.93.0"
+                }
+                public_ip = ip_replacements.get(public_ip, socket.gethostbyname(public_ip))
+                public_ips.append(public_ip)
+
             try:
-                req = requests.get(url, headers={}, timeout=(15, 30))
-                ret = json_load(req.text)
-                entries_to_remove = (
-                    "org",
-                    "countryCode",
-                    "timezone",
-                    "region",
-                    "status",
-                    "zip",
-                )
-                hosts.append(ret["as"] + " - " + ret["isp"])
-                cities.append(ret["city"] + ", " + ret["country"])
-                for entry in entries_to_remove:
-                    ret.pop(entry, None)
-                ret["ip"] = ret.pop("query")
-                print(ret)
-                geo.append((pinged[item], ret))
-            except:
-                pass
+                req = requests.post(GEOLOCATE, json=public_ips, headers={}, timeout=(15, 30))
+                # print(req.text)
+                response_data = req.json()
+
+                print(response_data)
+                
+                for index, ip_data in enumerate(response_data):
+                    if 'status' in ip_data and ip_data['status'] != 'fail':
+                        entries_to_remove = (
+                            "org",
+                            "countryCode",
+                            "timezone",
+                            "region",
+                            "zip",
+                        )
+                        hosts.append(ip_data["as"] + " - " + ip_data["isp"])
+                        cities.append(ip_data["city"] + ", " + ip_data["country"])
+                        for entry in entries_to_remove:
+                            ip_data.pop(entry, None)
+                        ip_data["ip"] = ip_data.pop("query")
+                        print(ip_data)
+                        geo.append((pinged[i + index], ip_data))
+            except Exception as e:
+                print(f"Error fetching geolocation data: {e}")
+                raise e
+    
     return geo, hosts, cities
 
 
-def spawn(pinging, validated):
-    """
-    Launch timed subprocesses to test each node in validated list
-    """
+
+async def _async_spawn(pinging, validated):
+    """Asynchronous version of spawn, using asyncio for concurrency."""
     pinged, timed, stale, expired, testnet, down, forked = [], [], [], [], [], [], []
-    for node in validated:
-        if len(pinged) < pinging:
-            # use multiprocessing module to enforce TIMEOUT
-            num = Value("d", 999999)
-            ping_process = Process(target=ping, args=(node, num))
-            ping_process.start()
-            ping_process.join(TIMEOUT)
-            if ping_process.is_alive() or (num.value > TIMEOUT):
-                ping_process.terminate()
-                ping_process.join()
-                if num.value == 111111:  # head block is stale
-                    stale.append(node)
-                elif num.value == 222222:  # connect failed
-                    down.append(node)
-                elif num.value == 333333:  # wrong chain id
-                    testnet.append(node)
-                elif num.value == 444444:
-                    forked.append(node)
-                elif num.value == 999999:  # TIMEOUT reached
-                    expired.append(node)
-            else:
-                pinged.append(node)  # connect success
-                timed.append(num.value)  # connect success time
-            print(("ping:", ("%.2f" % num.value), node))
-            if TRACE_DETAIL:
-                print("#" * 50, "\n\n\n")
-    # sort websockets by latency
+    
+    # Limit the number of concurrent ping tasks
+    semaphore = asyncio.Semaphore(pinging)
+    
+    async def ping_with_semaphore(node):
+        async with semaphore:
+            try:
+                return node, await asyncio.wait_for(ping(node), TIMEOUT)
+            except asyncio.TimeoutError:
+                return node, TIMEOUT  # Use a specific value to indicate timeout
+            except Exception as e:
+                print(f"Error pinging {node}: {e}")
+                return node, 222222  # Use a specific value for other errors
+
+    tasks = [ping_with_semaphore(node) for node in validated]
+    results = await asyncio.gather(*tasks)
+
+    for node, response_time in results:
+        if response_time == -1:  # Assuming -1 means the node is down
+            down.append(node)
+        elif response_time == 111111:  # Head block is stale
+            stale.append(node)
+        elif response_time == 222222:  # Connect failed
+            down.append(node)  # Already handled, but keeping for clarity
+        elif response_time == 333333:  # Wrong chain ID
+            testnet.append(node)
+        elif response_time == TIMEOUT:  # Timeout reached
+            expired.append(node)
+        else:
+            pinged.append(node)  # Connect success
+            timed.append(response_time)  # Add response time
+    
+    # Sort websockets by latency
     pinged = [x for _, x in sorted(zip(timed, pinged))]
     timed = sorted(timed)
+    
     return pinged, timed, stale, expired, testnet, down, forked
+
+
+def spawn(pinging, validated):
+    """Synchronous wrapper for the async spawn function."""
+    try:
+        # Run the async function using asyncio.run(), as in the execution results
+        return asyncio.run(_async_spawn(pinging, validated))
+    except RuntimeError as e:
+        if "asyncio.run() cannot be called from a running event loop" in str(e):
+            # If an event loop is already running (unlikely in a standard script), handle it
+            print("Warning: Event loop issue detected. Ensure you're in a standard script.")
+            loop = asyncio.get_event_loop()
+            return loop.run_until_complete(_async_spawn(pinging, validated))
+        else:
+            raise  # Re-raise other errors
+
+
+# def spawn(pinging, validated):
+#     """
+#     Launch timed subprocesses to test each node in validated list
+#     """
+#     pinged, timed, stale, expired, testnet, down, forked = [], [], [], [], [], [], []
+#     for node in validated:
+#         if len(pinged) < pinging:
+#             # use multiprocessing module to enforce TIMEOUT
+#             num = Value("d", 999999)
+#             ping_process = Process(target=ping, args=(node, num))
+#             ping_process.start()
+#             ping_process.join(TIMEOUT)
+#             if ping_process.is_alive() or (num.value > TIMEOUT):
+#                 ping_process.terminate()
+#                 ping_process.join()
+#                 if num.value == 111111:  # head block is stale
+#                     stale.append(node)
+#                 elif num.value == 222222:  # connect failed
+#                     down.append(node)
+#                 elif num.value == 333333:  # wrong chain id
+#                     testnet.append(node)
+#                 elif num.value == 444444:
+#                     forked.append(node)
+#                 elif num.value == 999999:  # TIMEOUT reached
+#                     expired.append(node)
+#             else:
+#                 pinged.append(node)  # connect success
+#                 timed.append(num.value)  # connect success time
+#             print(("ping:", ("%.2f" % num.value), node))
+#             if TRACE_DETAIL:
+#                 print("#" * 50, "\n\n\n")
+#     # sort websockets by latency
+#     pinged = [x for _, x in sorted(zip(timed, pinged))]
+#     timed = sorted(timed)
+#     return pinged, timed, stale, expired, testnet, down, forked
 
 
 def thresh(previous_unique):
@@ -862,13 +962,11 @@ def thresh(previous_unique):
         # report outcome
         print("")
         print(
-            (
                 len(pinged),
                 "of",
                 len(validated),
                 "nodes are active with latency less than",
                 TIMEOUT,
-            )
         )
         print("")
         print(("fastest node", pinged[0], "with latency", ("%.2f" % timed[0])))
@@ -1023,14 +1121,16 @@ def update():
         + ", this may take a few minutes..."
     )
     previous_unique = []
-    try:
-        while True:
+    while True:
+        try:
             thresh(previous_unique)
             break
-    # not satisfied until verified once
-    except Exception as error:
-        print(traceback.format_exc())
-        print(type(error).__name__, error.args, error)
+        # not satisfied until verified once
+        except Exception as error:
+            print(traceback.format_exc())
+            print(type(error).__name__, error.args, error)
+    asyncio.run(wss_handshake.session.close())
+    wss_handshake.session = None
 
 
 def main():
