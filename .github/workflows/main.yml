@@ -37,7 +37,9 @@ jobs:
         run: |
           git config --global user.email "squid_kid@tutamail.com"
           git config --global user.name "squidKid-deluxe"
+          git stash
           git pull --rebase origin gh-pages
+          git stash pop
           git add .
           git commit -m "Update via workflow"  # Create a commit
           git push origin HEAD:gh-pages  # Push to gh-pages branch
