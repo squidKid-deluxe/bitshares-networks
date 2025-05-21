@@ -35,6 +35,15 @@ jobs:
           python -m pip install --upgrade pip  # Upgrade pip first for reliability
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi  # Install only if requirements.txt exists
 
+      - name: Fetch and accumulate images from gh-pages
+        run: |
+          git fetch origin gh-pages:gh-pages || true
+          mkdir -p .old_gh_pages
+          git --work-tree=.old_gh_pages checkout gh-pages -- .
+          mkdir -p pools/images
+          cp -rn .old_gh_pages/pools/images/* pools/images/ 2>/dev/null || true
+          rm -rf .old_gh_pages
+
       - name: Update index.html
         run: cd pools; python3 main.py; cd ..
 
