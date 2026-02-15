@@ -12,9 +12,11 @@ import time
 from json import dumps as json_dumps
 from json import loads as json_loads
 from random import shuffle
+import json
 
 # THIRD PARTY MODULES
 from websocket import create_connection as wss
+import requests
 
 # LIQUIDITY POOL MAPPER MODULES
 from config import NODES
@@ -75,31 +77,57 @@ def rpc_ticker(rpc, pair):
     return float(ticker["latest"])
 
 
-def get_max_object(rpc, space):
+def get_max_object(_, type="1.19."):
     """
-    get the maximum object id within this instance space
-    using a modified exponential search
-    allow for missing values
+    Get the newest object id of the specified type (pool or other)
+    using Elasticsearch query.
     """
-    power = 5
-    max_object = 0
-    objects = []
-    while True:
-        ids = [f"{space}{int(max_object + i ** power)}" for i in range(1, 777)]
-        try:
-            objects = [
-                int(v["id"].split(".")[2])
-                for v in rpc_get_objects(rpc, ids).values()
-                if v is not None
-            ]
-            max_object = max(objects)
-            if len(objects) == 1:
-                power -= 0.5
-            if power < 1:
-                break
-        except Exception:
-            power -= 0.5
-    return max_object
+    ELASTICSEARCH_URL = "https://es.bitshares.dev/bitshares-*/_search"
+
+    field = (
+        "operation_history.operation_result_object.data_object.new_objects"
+        if type == "pool"
+        else "operation_history.operation_result_object.data_string"
+    )
+    query = {
+        "track_total_hits": True,
+        "sort": [{"block_data.block_time": {"order": "desc"}}],
+        "fields": [{"field": field}],
+        "size": 1,
+        "_source": False,
+        "query": {
+            "bool": {
+                "filter": [
+                    {
+                        "bool": {
+                            "should": [
+                                {
+                                    "match": {
+                                        "operation_type": "59" if type == "1.19." else "10"
+                                    }
+                                }
+                            ],
+                            "minimum_should_match": 1,
+                        }
+                    },
+                    {"exists": {"field": "operation_history.operation_result"}},
+                ]
+            }
+        },
+    }
+
+    try:
+        response = requests.post(
+            ELASTICSEARCH_URL,
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(query),
+        )
+        response.raise_for_status()
+        data = response.json()
+        latest = data["hits"]["hits"][0]["fields"][field][0]
+        return int(latest.split(".")[2])
+    except Exception as e:
+        raise Exception(f"Failed to fetch from Elasticsearch: {e}")
 
 
 def get_liquidity_pool_volume(rpc, pools):
