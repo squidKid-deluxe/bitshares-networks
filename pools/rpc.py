@@ -77,7 +77,7 @@ def rpc_ticker(rpc, pair):
     return float(ticker["latest"])
 
 
-def get_max_object(_, type="1.19."):
+def get_max_object(_, space="1.19."):
     """
     Get the newest object id of the specified type (pool or other)
     using Elasticsearch query.
@@ -103,7 +103,7 @@ def get_max_object(_, type="1.19."):
                             "should": [
                                 {
                                     "match": {
-                                        "operation_type": "59" if type == "1.19." else "10"
+                                        "operation_type": "59" if space == "1.19." else "10"
                                     }
                                 }
                             ],
