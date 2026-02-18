@@ -370,7 +370,7 @@ def map_network(rpc, weights, choice, is_balance, pause):
             return
         else:
             print("saving graph...")
-            net.save_graph(FILnENAME)
+            net.save_graph(FILENAME)
             system("rm " + PATH + "/ticker_cache.txt")
             time.sleep(pause)
             # handshake will likely have timed out, so get fresh rpc

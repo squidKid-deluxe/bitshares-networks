@@ -86,7 +86,7 @@ def get_max_object(_, space="1.19."):
 
     field = (
         "operation_history.operation_result_object.data_object.new_objects"
-        if type == "pool"
+        if space == "1.19."
         else "operation_history.operation_result_object.data_string"
     )
     query = {

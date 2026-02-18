@@ -14,23 +14,15 @@ DEV = False
 DARK_THEME = True
 # Use these bitshares nodes to gather rpc data
 NODES = [
-    "wss://api.bts.mobi/wss",
-    "wss://newyork.bitshares.im/ws",
-    "wss://api.bitshares.info",
-    "wss://bts.open.icowallet.net/ws",
-    "wss://api.dex.trading/wss",
-    "wss://eu.nodes.bitshares.ws/wss",
-    "wss://api-us.61bts.com/wss",
-    "wss://cloud.xbts.io/ws",
-    "wss://dex.iobanker.com/wss",
-    "wss://hongkong.bitshares.im/wss",
-    "wss://bts.mypi.win/wss",
+    "wss://api.bts.mobi",
+    "wss://api.bitshares.dev/wss",
+    "wss://api.btslebin.com/ws",
+    "wss://api.dex.trading",
     "wss://public.xbts.io/wss",
+    "wss://btsws.roelandp.nl/ws",
+    "wss://cloud.xbts.io/ws",
+    "wss://dex.iobanker.com/ws",
     "wss://node.xbts.io/wss",
-    "wss://btsws.roelandp.nl/wss",
-    "wss://singapore.bitshares.im/wss",
-    "wss://api.bts.btspp.io:10100/wss",
-    "wss://api.btslebin.com/wss",
 ]
 # menu option to exclude these from the map
 DETACH = [
