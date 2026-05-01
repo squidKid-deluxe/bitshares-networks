@@ -789,8 +789,9 @@ def geolocation(unique, pinged):
         
         if IPAPI:
             print("geolocating...")
-            # Prepare the list of public IPs
+            # Prepare the list of public IPs, keeping track of the original node
             public_ips = []
+            node_map = []
             for item in batch:
                 public_ip = (validate([item])[0])[6:]
                 public_ip = public_ip.split(":")[0].split("/")[0]
@@ -813,6 +814,7 @@ def geolocation(unique, pinged):
                     except socket.gaierror:
                         continue
                 public_ips.append(public_ip)
+                node_map.append(item)
 
             try:
                 req = requests.post(GEOLOCATE, json=public_ips, headers={}, timeout=(15, 30))
@@ -836,7 +838,8 @@ def geolocation(unique, pinged):
                             ip_data.pop(entry, None)
                         ip_data["ip"] = ip_data.pop("query")
                         print(ip_data)
-                        geo.append((pinged[i + index], ip_data))
+                        if index < len(node_map):
+                            geo.append((node_map[index], ip_data))
             except Exception as e:
                 print(f"Error fetching geolocation data: {e}")
                 raise e
@@ -1161,8 +1164,6 @@ def update():
         except Exception as error:
             print(traceback.format_exc())
             print(type(error).__name__, error.args, error)
-    asyncio.run(wss_handshake.session.close())
-    wss_handshake.session = None
 
 
 def main():
