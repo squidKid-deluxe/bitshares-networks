@@ -7,7 +7,7 @@ function switch_tab(evt, tab_id) {
   }
   tablinks = document.getElementsByClassName("tablinks");
   for (i = 0; i < tablinks.length; i++) {
-    tablinks[i].className = tablinks[i].className.replace(" active", "");
+    tablinks[i].className = tablinks[i].className.replace(/\bactive\b/g, "").replace(/\s+/g, " ").trim();
   }
 
   tab = document.getElementById(tab_id);

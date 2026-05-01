@@ -61,7 +61,8 @@ def generate_explorer_html(html):
         else:
             data_src = url
 
-        buttons.append(f'<button class="tablinks"{active_class} onclick="switch_tab(event, \'{tab_id}\')">{name}</button>')
+        midclick = f'onmousedown="if(event.button===1)window.open(\'{data_src}\',\'_blank\')" '
+        buttons.append(f'<button {midclick}class="tablinks"{active_class} onclick="switch_tab(event, \'{tab_id}\')">{name}</button>')
         if is_default:
             objects.append(f'<object id="{tab_id}" class="tabcontent" type="text/html" data="{data_src}"{active_style}></object>')
         else:
