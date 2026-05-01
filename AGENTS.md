@@ -70,10 +70,10 @@ Runs all three visualizers in parallel with timeouts, then terminates. Used by t
 
 - Workflow: `.github/workflows/main.yml`
 - Triggers: daily at midnight UTC + manual dispatch
-- Python 3.9 on ubuntu-latest
+- Python 3.11 on ubuntu-latest
+- Concurrency group prevents duplicate runs
 - Accumulates images from `gh-pages` branch before running `main.py`
-- Force-pushes to `gh-pages` and deploys via GitHub Pages Actions
-- The generated HTML output is served from the `pools/` directory on GitHub Pages
+- Deploys to GitHub Pages by force-pushing `gh-pages` branch (serves `pools/` directory)
 
 ## Config Quirks (`config.py`)
 
