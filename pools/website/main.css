@@ -157,6 +157,42 @@ li {
     /*border-width:0.1vw;
     border-color:white;*/
 }
+ .explorertab {
+    width: 99.9vw;
+    height: 4vh;
+    overflow: hidden;
+    border: none;
+    background-color: #111111;
+    color: #48a6fd;
+    display: flex;
+}
+ .explorertab button {
+    flex: 1;
+    background-color: #111111;
+    color: #48a6fd;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 1vw;
+    font-weight: bold;
+}
+ .explorertab button:hover {
+    color: #ffffff;
+    background-color: #664ffb;
+    border-radius: 50px;
+}
+ .explorertab button.active {
+    background: #111111;
+    color: white;
+    transition: 0.2s ease all;
+    border-radius: 50px;
+    border: 0.2vw #664ffb solid;
+}
+ .explorertab button.active:hover {
+    background: #664ffb;
+}
+
 /* Style the tab content */
  .tabcontent {
     overflow: hidden;

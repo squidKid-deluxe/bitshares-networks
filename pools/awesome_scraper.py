@@ -2,6 +2,7 @@
 
 import glob
 import os
+import re
 
 import markdown
 import requests
@@ -22,6 +23,63 @@ CEX = """
     </ul>
     """
 
+DEFAULT_EXPLORER = "btslens.pages.dev"
+
+
+def generate_explorer_html(html):
+    """Parse Blockchain Explorers section and generate explorer.html with sub-tabs."""
+    explorers_section = html.get("Blockchain Explorers")
+    if not explorers_section:
+        print("WARNING: Blockchain Explorers section not found; skipping explorer generation")
+        return
+
+    link_pattern = re.compile(r'<a[^>]+href="([^"]*)"[^>]*>([^<]+)</a>')
+    explorers = []
+    for match in link_pattern.finditer(explorers_section):
+        url = match.group(1)
+        name = match.group(2).strip()
+        if "github" in url.lower():
+            continue
+        domain = url.split("//")[-1].split("/")[0].split("#")[0]
+        explorers.append((name, url, domain))
+
+    if not explorers:
+        print("WARNING: No explorer links found; skipping explorer generation")
+        return
+
+    buttons = []
+    objects = []
+    for idx, (name, url, domain) in enumerate(explorers):
+        tab_id = f"E{idx}"
+        is_default = DEFAULT_EXPLORER in domain
+        active_class = ' class="active"' if is_default else ""
+        active_style = ' style="display:block;"' if is_default else ""
+        if is_default and "/" in url:
+            data_src = url
+        elif is_default:
+            data_src = f"https://{domain}/dashboard"
+        else:
+            data_src = url
+
+        buttons.append(f'<button class="tablinks"{active_class} onclick="switch_tab(event, \'{tab_id}\')">{name}</button>')
+        objects.append(f'<object id="{tab_id}" class="tabcontent" type="text/html" data-src="{data_src}"{active_style}></object>')
+
+    text = (
+        '<!DOCTYPE html>\n<html>\n<head>\n'
+        '<link rel="stylesheet" href="main.css">\n'
+        '<script type="text/javascript" src="tabs.js"></script>\n'
+        '</head>\n<body>\n'
+        '<div class="explorertab">\n'
+        + "\n".join(buttons) + "\n"
+        + "</div>\n"
+        + "\n".join(objects) + "\n"
+        + "</body>\n</html>"
+    )
+
+    with open("website/explorer.html", "w") as handle:
+        handle.write(text)
+    print(f"Generated explorer.html with {len(explorers)} explorers")
+
 
 def main():
     URL = "https://raw.githubusercontent.com/bitshares/awesome-bitshares/master/README.md"
@@ -39,6 +97,8 @@ def main():
 
     html = ["<h3>" + i for i in html.split("<h3>")][1:]
     html = {i.split("</h3>")[0][4:]: i.split("</h3>", 1)[1] for i in html}
+
+    generate_explorer_html(html)
 
     text = (
         '<DOCTYPE html>\n<html>\n<body>\n<link rel="stylesheet" href="main.css">\n<link'
