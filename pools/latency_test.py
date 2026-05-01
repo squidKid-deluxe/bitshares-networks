@@ -789,9 +789,9 @@ def geolocation(unique, pinged):
         
         if IPAPI:
             print("geolocating...")
-            # Prepare the list of public IPs, keeping track of the original node
+            # Build IP-to-node mapping, preserving first-seen node for each IP
             public_ips = []
-            node_map = []
+            ip_to_node = {}
             for item in batch:
                 public_ip = (validate([item])[0])[6:]
                 public_ip = public_ip.split(":")[0].split("/")[0]
@@ -813,17 +813,17 @@ def geolocation(unique, pinged):
                         public_ip = socket.gethostbyname(hostname)
                     except socket.gaierror:
                         continue
-                public_ips.append(public_ip)
-                node_map.append(item)
+                if public_ip not in ip_to_node:
+                    public_ips.append(public_ip)
+                    ip_to_node[public_ip] = item
 
             try:
                 req = requests.post(GEOLOCATE, json=public_ips, headers={}, timeout=(15, 30))
-                # print(req.text)
                 response_data = req.json()
 
                 print(response_data)
                 
-                for index, ip_data in enumerate(response_data):
+                for ip_data in response_data:
                     if 'status' in ip_data and ip_data['status'] != 'fail':
                         entries_to_remove = (
                             "org",
@@ -838,8 +838,9 @@ def geolocation(unique, pinged):
                             ip_data.pop(entry, None)
                         ip_data["ip"] = ip_data.pop("query")
                         print(ip_data)
-                        if index < len(node_map):
-                            geo.append((node_map[index], ip_data))
+                        query_ip = ip_data["ip"]
+                        if query_ip in ip_to_node:
+                            geo.append((ip_to_node[query_ip], ip_data))
             except Exception as e:
                 print(f"Error fetching geolocation data: {e}")
                 raise e
