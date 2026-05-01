@@ -105,12 +105,10 @@ PATH = str(os.path.dirname(os.path.abspath(__file__))) + "/"
 
 # REMOTE PROCEDURE CALL TO BITSHARES PUBLIC API NODES
 # ######################################################################
-async def wss_handshake(node):
+async def wss_handshake(node, session):
     """Asynchronously create a websocket connection to a BitShares public RPC node."""
-    if not hasattr(wss_handshake, "session") or not wss_handshake.session:
-        wss_handshake.session = aiohttp.ClientSession()
     try:
-        ws = await wss_handshake.session.ws_connect(node, timeout=TIMEOUT)  # Await the connection
+        ws = await session.ws_connect(node, timeout=TIMEOUT)  # Await the connection
         return ws  # Return the websocket object
     except Exception as e:
         print(f"Error during handshake with {node}: {e}")
@@ -664,14 +662,14 @@ def test_seeds():
     return seeds, hosts, cities
 
 
-async def ping(node):
+async def ping(node, session):
     """Asynchronous version of your ping function."""
     rpc = None
     result = 222222  # Default return value in case of failure
 
     try:
         start = time.time()
-        rpc = await wss_handshake(node)
+        rpc = await wss_handshake(node, session)
         if rpc is None:
             return result  # Handshake failed
         
@@ -834,42 +832,44 @@ async def _async_spawn(pinging, validated):
     """Asynchronous version of spawn, using asyncio for concurrency."""
     pinged, timed, stale, expired, testnet, down, forked = [], [], [], [], [], [], []
     
-    # Limit the number of concurrent ping tasks
-    semaphore = asyncio.Semaphore(pinging)
-    
-    async def ping_with_semaphore(node):
-        async with semaphore:
-            try:
-                return node, await asyncio.wait_for(ping(node), TIMEOUT)
-            except asyncio.TimeoutError:
-                return node, TIMEOUT  # Use a specific value to indicate timeout
-            except Exception as e:
-                print(f"Error pinging {node}: {e}")
-                return node, 222222  # Use a specific value for other errors
+    # Create and manage the session lifecycle within this run
+    async with aiohttp.ClientSession() as session:
+        # Limit the number of concurrent ping tasks
+        semaphore = asyncio.Semaphore(pinging)
+        
+        async def ping_with_semaphore(node):
+            async with semaphore:
+                try:
+                    return node, await asyncio.wait_for(ping(node, session), TIMEOUT)
+                except asyncio.TimeoutError:
+                    return node, TIMEOUT  # Use a specific value to indicate timeout
+                except Exception as e:
+                    print(f"Error pinging {node}: {e}")
+                    return node, 222222  # Use a specific value for other errors
 
-    tasks = [ping_with_semaphore(node) for node in validated]
-    results = await asyncio.gather(*tasks)
+        tasks = [ping_with_semaphore(node) for node in validated]
+        results = await asyncio.gather(*tasks)
 
-    for node, response_time in results:
-        if response_time == -1:  # Assuming -1 means the node is down
-            down.append(node)
-        elif response_time == 111111:  # Head block is stale
-            stale.append(node)
-        elif response_time == 222222:  # Connect failed
-            down.append(node)  # Already handled, but keeping for clarity
-        elif response_time == 333333:  # Wrong chain ID
-            testnet.append(node)
-        elif response_time == TIMEOUT:  # Timeout reached
-            expired.append(node)
-        else:
-            pinged.append(node)  # Connect success
-            timed.append(response_time)  # Add response time
-    
-    # Sort websockets by latency
-    pinged = [x for _, x in sorted(zip(timed, pinged))]
-    timed = sorted(timed)
-    
-    return pinged, timed, stale, expired, testnet, down, forked
+        for node, response_time in results:
+            if response_time == -1:  # Assuming -1 means the node is down
+                down.append(node)
+            elif response_time == 111111:  # Head block is stale
+                stale.append(node)
+            elif response_time == 222222:  # Connect failed
+                down.append(node)  # Already handled, but keeping for clarity
+            elif response_time == 333333:  # Wrong chain ID
+                testnet.append(node)
+            elif response_time == TIMEOUT:  # Timeout reached
+                expired.append(node)
+            else:
+                pinged.append(node)  # Connect success
+                timed.append(response_time)  # Add response time
+        
+        # Sort websockets by latency
+        pinged = [x for _, x in sorted(zip(timed, pinged))]
+        timed = sorted(timed)
+        
+        return pinged, timed, stale, expired, testnet, down, forked
 
 
 def spawn(pinging, validated):
@@ -958,7 +958,10 @@ def thresh(previous_unique):
                 time.sleep(1)
         # get average speed of nested list
         speeds = [speed[i][1] for i, _ in enumerate(speed)]
-        mean_speed = sum(speeds) / len(speeds)
+        if speeds:
+            mean_speed = sum(speeds) / len(speeds)
+        else:
+            mean_speed = 0
         # report outcome
         print("")
         print(
@@ -969,7 +972,10 @@ def thresh(previous_unique):
                 TIMEOUT,
         )
         print("")
-        print(("fastest node", pinged[0], "with latency", ("%.2f" % timed[0])))
+        if pinged:
+            print(("fastest node", pinged[0], "with latency", ("%.2f" % timed[0])))
+        else:
+            print("no nodes responded")
         print("mean latency", mean_speed)
         if excluded:
             for item, _ in enumerate(excluded):
