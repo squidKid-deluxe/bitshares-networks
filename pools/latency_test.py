@@ -430,7 +430,7 @@ def get_basemap():
     otherwise download basemap from imgur
     """
     url = "https://i.imgur.com/yIVogZH.png"
-    image = "images/basemap.png"
+    image = "website/images/basemap.png"
     location = PATH + image
     print(location)
     try:
@@ -470,7 +470,7 @@ def plot(geo, speed, mean_speed):
     plt.xticks([])
     plt.yticks([])
     # plot basemap
-    axis.imshow(plt.imread(PATH + "images/basemap.png"), extent=[-180, 180, -90, 90])
+    axis.imshow(plt.imread(PATH + "website/images/basemap.png"), extent=[-180, 180, -90, 90])
     fig.tight_layout()
     # plot transparent magenta signal strength at each location
     lons = []

@@ -10,7 +10,7 @@ Visualizes the BitShares DEX liquidity pool network and node latency as interact
 /
   README.md
   requirements.txt
-  images/
+  images/             # Root-level docs images (sample_pools.png)
   pools/
     pool_mapper.py      # Main entry: liquidity pool network visualization
     latency_test.py     # BitShares node latency testing + geolocation
@@ -19,10 +19,13 @@ Visualizes the BitShares DEX liquidity pool network and node latency as interact
     rpc.py              # WebSocket RPC + Elasticsearch queries for BitShares chain
     utilities.py        # JSON IPC (concurrent read/write cache), helpers
     bitshares_nodes.py  # Hardcoded lists of known BitShares public nodes
-    awesome_scraper.py  # Generates animated GIF from latency map history
+    awesome_scraper.py  # Generates animated GIF + explorer.html + awesome.html
     pipe/               # Runtime cache directory (created at runtime, contains .txt JSON files)
     latency_maps/       # Saved latency map PNGs
-    *.html / *.css      # Generated output + styles
+    website/            # All web assets (HTML, CSS, JS, images)
+      bitshares_network.html  # Main UI entry point
+      *.html / *.css / *.js   # Web assets
+      images/               # Website images (basemap, logos, map.gif)
 ```
 
 ## Commands
