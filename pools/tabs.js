@@ -12,11 +12,18 @@ function switch_tab(evt, tab_id) {
 
   tab = document.getElementById(tab_id);
 
-  /* Lazy-load: if any <object> inside this tab has a data-src but no data, activate it */
-  var objects = tab.getElementsByTagName("object");
-  for (i = 0; i < objects.length; i++) {
-    if (objects[i].dataset.src && !objects[i].getAttribute("data")) {
-      objects[i].setAttribute("data", objects[i].dataset.src);
+  /* Lazy-load <object> elements: the tab itself may be an <object>,
+     or it may be a container with child <object>s */
+  if (tab.tagName === "OBJECT") {
+    if (tab.dataset.src && !tab.getAttribute("data")) {
+      tab.setAttribute("data", tab.dataset.src);
+    }
+  } else {
+    var objects = tab.getElementsByTagName("object");
+    for (i = 0; i < objects.length; i++) {
+      if (objects[i].dataset.src && !objects[i].getAttribute("data")) {
+        objects[i].setAttribute("data", objects[i].dataset.src);
+      }
     }
   }
 
