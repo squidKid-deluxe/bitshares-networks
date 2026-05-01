@@ -62,7 +62,10 @@ def generate_explorer_html(html):
             data_src = url
 
         buttons.append(f'<button class="tablinks"{active_class} onclick="switch_tab(event, \'{tab_id}\')">{name}</button>')
-        objects.append(f'<object id="{tab_id}" class="tabcontent" type="text/html" data-src="{data_src}"{active_style}></object>')
+        if is_default:
+            objects.append(f'<object id="{tab_id}" class="tabcontent" type="text/html" data="{data_src}"{active_style}></object>')
+        else:
+            objects.append(f'<object id="{tab_id}" class="tabcontent" type="text/html" data-src="{data_src}"></object>')
 
     text = (
         '<!DOCTYPE html>\n<html>\n<head>\n'
