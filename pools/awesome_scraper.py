@@ -77,13 +77,13 @@ def main():
 
     print()
 
-    with open("awesome.html", "w") as handle:
+    with open("website/awesome.html", "w") as handle:
         handle.write(text)
 
     print("generating GIF...")
 
     fp_in = PATH + "latency_maps/map_*.png"
-    fp_out = PATH + "images/map.gif"
+    fp_out = PATH + "website/images/map.gif"
 
     # https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif
 

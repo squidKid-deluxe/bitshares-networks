@@ -46,7 +46,7 @@ from rpc import (
 from utilities import chunks, json_ipc, dprint, logo, PATH, sigfig, NIL
 
 
-FILENAME = "liquidity_pools.html" if len(sys.argv) == 1 else sys.argv[1]
+FILENAME = "website/liquidity_pools.html" if len(sys.argv) == 1 else sys.argv[1]
 
 
 def derive_prices(pool_cache, name_cache):

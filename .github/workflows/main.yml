@@ -41,21 +41,28 @@ jobs:
           git fetch origin gh-pages:gh-pages || true
           mkdir -p .old_gh_pages
           git --work-tree=.old_gh_pages checkout gh-pages -- . || true
-          mkdir -p pools/images
-          if [ -d .old_gh_pages/pools/images ]; then
-            cp -rn .old_gh_pages/pools/images/* pools/images/ 2>/dev/null || true
+          mkdir -p pools/website/images
+          if [ -d .old_gh_pages/images ]; then
+            cp -rn .old_gh_pages/images/* pools/website/images/ 2>/dev/null || true
           fi
           rm -rf .old_gh_pages
 
       - name: Run pool mapper, latency test, and scraper
         run: cd pools; python3 main.py; cd ..
 
-      - name: Commit and force-push to GitHub Pages
+      - name: Deploy to GitHub Pages
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "github-actions[bot]"
+
+          # Build gh-pages from pools/website/ contents
+          git checkout --orphan gh-pages-new
+          git rm -rf .
+          cp -r pools/website/* .
           git add .
-          git commit -m "Update via workflow" || echo "No changes to commit"
-          git push --force-with-lease origin HEAD:gh-pages
+          git commit -m "Deploy $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push --force-with-lease origin gh-pages-new:gh-pages
+          git checkout main
+          git branch -D gh-pages-new
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

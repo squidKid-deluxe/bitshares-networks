@@ -1058,10 +1058,10 @@ def thresh(previous_unique):
     print("CITIES")
     for city in cities:
         print(city)
-    with open("servers.html", "w") as handle:
+    with open("website/servers.html", "w") as handle:
         handle.write(to_html(hosts))
         handle.close()
-    with open("places.html", "w") as handle:
+    with open("website/places.html", "w") as handle:
         handle.write(to_html(cities))
         handle.close()
     no_suffix = validate(Nodes.universe())
@@ -1109,7 +1109,7 @@ def thresh(previous_unique):
     # update the previous unique list
     previous_unique = unique[:]
     del unique
-    with open("nodes.html", "w") as handle:
+    with open("website/nodes.html", "w") as handle:
         handle.write(to_html(previous_unique, font="mono", newlines="", size="0.9vw"))
         handle.close()
     with open("nodes.json", "w") as handle:
