@@ -44,7 +44,7 @@ jobs:
           cp -rn .old_gh_pages/pools/images/* pools/images/ 2>/dev/null || true
           rm -rf .old_gh_pages
 
-      - name: Update index.html
+      - name: Run pool mapper, latency test, and scraper
         run: cd pools; python3 main.py; cd ..
 
       - name: Commit and force-push to GitHub Pages
@@ -53,7 +53,7 @@ jobs:
           git config --global user.name "github-actions@github.com"
           git add .
           git commit -m "Update via workflow" || echo "No changes to commit"
-          git push --force origin HEAD:gh-pages
+          git push --force-with-lease origin HEAD:gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
