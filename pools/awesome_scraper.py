@@ -71,6 +71,7 @@ def generate_explorer_html(html):
         '<!DOCTYPE html>\n<html>\n<head>\n'
         '<link rel="stylesheet" href="main.css">\n'
         '<script type="text/javascript" src="tabs.js"></script>\n'
+        '<style>.tabcontent{height:calc(100vh - 4vh);}</style>\n'
         '</head>\n<body>\n'
         '<div class="explorertab">\n'
         + "\n".join(buttons) + "\n"
