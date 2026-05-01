@@ -5,3 +5,4 @@ requests
 markdown
 aiohttp
 Pillow
+networkx

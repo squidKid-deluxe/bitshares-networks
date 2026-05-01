@@ -15,14 +15,14 @@ function switch_tab(evt, tab_id) {
   /* Lazy-load <object> elements: the tab itself may be an <object>,
      or it may be a container with child <object>s */
   if (tab.tagName === "OBJECT") {
-    if (tab.dataset.src && !tab.getAttribute("data")) {
-      tab.setAttribute("data", tab.dataset.src);
+    if (tab.getAttribute("data-src") && !tab.getAttribute("data")) {
+      tab.setAttribute("data", tab.getAttribute("data-src"));
     }
   } else {
     var objects = tab.getElementsByTagName("object");
     for (i = 0; i < objects.length; i++) {
-      if (objects[i].dataset.src && !objects[i].getAttribute("data")) {
-        objects[i].setAttribute("data", objects[i].dataset.src);
+      if (objects[i].getAttribute("data-src") && !objects[i].getAttribute("data")) {
+        objects[i].setAttribute("data", objects[i].getAttribute("data-src"));
       }
     }
   }

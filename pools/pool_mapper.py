@@ -22,6 +22,7 @@ from shutil import rmtree
 
 # THIRD PARTY MODULES
 from pyvis.network import Network
+import networkx as nx
 
 # LIQUIDITY POOL MAPPER MODULES
 from config import (
@@ -39,7 +40,6 @@ from rpc import (
     wss_handshake,
     get_max_object,
     rpc_get_objects,
-    rpc_ticker,
     get_liquidity_pool_volume,
     rpc_get_feed,
 )
@@ -47,6 +47,54 @@ from utilities import chunks, json_ipc, dprint, logo, PATH, sigfig, NIL
 
 
 FILENAME = "liquidity_pools.html" if len(sys.argv) == 1 else sys.argv[1]
+
+
+def derive_prices(pool_cache, name_cache):
+    """
+    Derive BTS price for each asset via shortest-path through the pool network.
+    Uses pure-hop BFS.  Zero-balance pools are treated as disconnected.
+    Returns dict of asset_id -> BTS_price (or None if no path exists).
+    """
+    G = nx.Graph()
+    for pool in pool_cache.values():
+        a, b = pool["asset_a"], pool["asset_b"]
+        bal_a, bal_b = pool["balance_a"], pool["balance_b"]
+        if bal_a == 0 or bal_b == 0:
+            continue
+        prec_a = name_cache.get(a, {}).get("precision", 0)
+        prec_b = name_cache.get(b, {}).get("precision", 0)
+        G.add_edge(a, b, balance={a: bal_a / 10**prec_a, b: bal_b / 10**prec_b})
+
+    prices = {"1.3.0": 1.0}
+    all_assets = set()
+    for pool in pool_cache.values():
+        all_assets.add(pool["asset_a"])
+        all_assets.add(pool["asset_b"])
+
+    for asset in all_assets:
+        if asset == "1.3.0":
+            continue
+        if asset not in G:
+            prices[asset] = None
+            continue
+        try:
+            path = nx.shortest_path(G, source=asset, target="1.3.0")
+        except nx.NetworkXNoPath:
+            prices[asset] = None
+            continue
+
+        # Walk backwards from BTS: price_u = (bal_v / bal_u) * price_v
+        price = 1.0
+        for i in range(len(path) - 2, -1, -1):
+            u = path[i]
+            v = path[i + 1]
+            edge = G.edges[u, v]
+            bal_u = edge["balance"][u]
+            bal_v = edge["balance"][v]
+            price = (bal_v / bal_u) * price
+
+        prices[asset] = price
+    return prices
 
 
 def init_pipe():
@@ -167,61 +215,56 @@ def cache_asset_name(rpc):
 
 def cache_weights(rpc):
     """
-    ticker_cache will be used to scale the amounts in each pool
-    back to BTS core token to visualize on equal terms
-    :return: None
+    Derive BTS prices from the pool network itself, then compute
+    each pool's total value in BTS terms for edge width scaling.
     """
-    weights = []
     pool_cache = json_ipc("pool_cache.txt")
     name_cache = json_ipc("name_cache.txt")
     named_share_cache = json_ipc("named_share_cache.txt")
-    ticker_cache = json_ipc("ticker_cache.txt")
+
+    prices = derive_prices(pool_cache, name_cache)
+
+    # Fetch 24h volumes via RPC (still needed for volume-based scaling)
     pools_chunked = chunks(list(pool_cache.keys()), 100)
     volumes = {}
-    ticker_cache["1.3.0"] = 1
     for chunk in pools_chunked:
         volumes = {**volumes, **get_liquidity_pool_volume(rpc, chunk)}
+
+    weights = []
     for pool, item in pool_cache.items():
-        dprint(name_cache[item["asset_a"]])
-        ticker = {"asset_a": 0, "asset_b": 0}
-        for i in ["asset_a", "asset_b"]:
-            # if the token is BTS, the ticker is 1
-            if item[i] == "1.3.0":
-                ticker[i] = 1
-            elif item[i] in ticker_cache:
-                ticker[i] = ticker_cache[item[i]]
-            else:
-                ticker[i] = rpc_ticker(rpc, f"1.3.0:{item[i]}")
-                ticker_cache[item[i]] = ticker[i]
-        ticker_a = ticker["asset_a"]
-        ticker_b = ticker["asset_b"]
+        price_a = prices.get(item["asset_a"])
+        price_b = prices.get(item["asset_b"])
+
         precision_a = name_cache[item["asset_a"]]["precision"]
         precision_b = name_cache[item["asset_b"]]["precision"]
         balance_a = item["balance_a"]
         balance_b = item["balance_b"]
         volume_a = volumes[pool]
-        dprint(ticker_cache)
-        dprint("v0, v1", item["asset_a"], item["asset_b"])
-        dprint("ticker_a, balance_a, precision_a")
-        dprint(ticker_a, balance_a, precision_a)
-        dprint("ticker_b, balance_b, precision_b")
-        dprint(ticker_b, balance_b, precision_b)
-        wt_balance = (
-            ticker_a * balance_a / 10**precision_a
-            + ticker_b * balance_b / 10**precision_b
-        )
-        wt_volume = ticker_a * volume_a / 10**precision_a
+
         human_balance_a = balance_a / 10**precision_a
         human_balance_b = balance_b / 10**precision_b
+
+        if price_a is not None and price_b is not None:
+            wt_balance = price_a * human_balance_a + price_b * human_balance_b
+            wt_volume = price_a * volume_a / 10**precision_a
+        else:
+            wt_balance = 1.0
+            wt_volume = 1.0
+
+        # Power transform preserves more visual spread than log
+        # 0.3 exponent: 1000x difference -> ~8x instead of ~7 (but non-linear)
+        wt_balance_scaled = math.pow(wt_balance + 1, 0.35)
+        wt_volume_scaled = math.pow(wt_volume + 1, 0.35)
+
         price = human_balance_a / (human_balance_b + NIL)
         inverse = 1 / (price + NIL)
-        # add the edge weights
+
         weights.append(
             {
                 "asset_a": item["asset_a"],
                 "asset_b": item["asset_b"],
-                "wt_balance": math.log(wt_balance + 1),
-                "wt_volume": math.log(wt_volume + 1),
+                "wt_balance": wt_balance_scaled,
+                "wt_volume": wt_volume_scaled,
                 "pool_id": pool,
                 "pool_name": named_share_cache[item["share_asset"]]["symbol"],
                 "balance_a": human_balance_a,
@@ -231,6 +274,7 @@ def cache_weights(rpc):
             }
         )
 
+    ticker_cache = {k: v for k, v in prices.items() if v is not None}
     json_ipc("ticker_cache.txt", ticker_cache)
     return weights
 
@@ -270,15 +314,18 @@ def map_network(rpc, weights, choice, is_balance, pause):
                     node_colors.append(color)
                     break
 
-        node_title = [
-            "Value of {}:\n\nBTS: {:.3f}\nUSD: {:.3f}\nBTC: {:.3f}".format(
-                symbol,
-                1 / (ticker_cache[symbol] + NIL),
-                1 / ((ticker_cache[symbol] + NIL) / usd_feed),
-                1 / ((ticker_cache[symbol] + NIL) / btc_feed),
+        node_title = []
+        for asset_id in name_cache:
+            symbol = name_cache[asset_id]["symbol"]
+            bts_price = ticker_cache.get(asset_id, 0)
+            node_title.append(
+                "Value of {}:\n\nBTS: {:.3f}\nUSD: {:.3f}\nBTC: {:.3f}".format(
+                    symbol,
+                    bts_price,
+                    bts_price * usd_feed,
+                    bts_price * btc_feed,
+                )
             )
-            for symbol in name_cache.keys()
-        ]
         net = Network(
             height=f"{HEIGHT}vh",
             width="100%",

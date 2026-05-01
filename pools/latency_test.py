@@ -334,7 +334,7 @@ def to_html(data, newlines="\n", font="sans-serif", size="4vw"):
     <body>
     ***
     </body>
-    </head>
+    </html>
     """
     text = (
         to_html.__doc__.split("***")[1]
