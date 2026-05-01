@@ -30,6 +30,7 @@ from json import loads as json_load
 from json import dumps as json_dump
 from calendar import timegm
 from pprint import pprint
+import signal
 import traceback
 import time
 import sys
@@ -44,7 +45,6 @@ import requests
 import socket
 
 import asyncio
-import time
 import aiohttp
 import json
 from datetime import datetime  # For ISO date conversion
@@ -99,6 +99,17 @@ KEY = "get an api key to share your data on the web from jsonbin.io"
 # ######################################################################
 # BITSHARES MAINNET CHAIN ID
 ID = "4018d7844c78f6a6c41c6a552b898022310fc5dec06da467ee7905a8dad512c8"
+
+SHUTDOWN = False
+
+def handle_signal(signum, frame):
+    global SHUTDOWN
+    SHUTDOWN = True
+    print("\nInterrupted, shutting down...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_signal)
+signal.signal(signal.SIGTERM, handle_signal)
 # LOCATION IN WHICH THIS SCRIPT IS RUNNING
 PATH = str(os.path.dirname(os.path.abspath(__file__))) + "/"
 
@@ -1114,6 +1125,9 @@ def loop(logo):
             previous_unique = thresh(previous_unique)
             print("elapsed: ", (time.time() - start))
             time.sleep(REPEAT)
+        except KeyboardInterrupt:
+            print("\nInterrupted, shutting down...")
+            break
         # no matter what happens just keep verifying book
         except Exception as error:
             print(traceback.format_exc())
@@ -1133,6 +1147,9 @@ def update():
     while True:
         try:
             thresh(previous_unique)
+            break
+        except KeyboardInterrupt:
+            print("\nInterrupted, shutting down...")
             break
         # not satisfied until verified once
         except Exception as error:
@@ -1167,4 +1184,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nExiting.")
+        sys.exit(0)
