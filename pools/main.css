@@ -2,6 +2,13 @@
     margin: 0;
     padding: 0;
     font-family: sans-serif;
+    box-sizing: border-box;
+}
+ html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    line-height: 0;
 }
  .wrapper {
     display: grid;
@@ -159,28 +166,36 @@ li {
 }
 /* Style the tab content */
  .tabcontent {
-    overflow: hidden;
-    width: 99.9vw;
-    height: 94vh;
-    margin: 0px;
-    background-color: #111111;
-    color: #48a6fd;
-    display: none;
-    /* padding: 6px 12px;
-    */
-    border: none;
-    border-top: none;
-    margin: 0;
-    padding: 0;
-}
+     overflow: hidden;
+     width: 100vw;
+     height: calc(100vh - 5vh);
+     margin: 0px;
+     background-color: #111111;
+     color: #48a6fd;
+     display: none;
+     border: none;
+     border-top: none;
+     margin: 0;
+     padding: 0;
+     line-height: 0;
+ }
  a {
     background-color:inherit;
     color:inherit;
     text-decoration: none;
 }
  object {
-    font-size: 1.5vw;
-}
+     font-size: 1.5vw;
+     border: none;
+     outline: none;
+     display: block;
+     width: 100%;
+     height: calc(100vh - 5vh);
+     padding: 0;
+     margin: 0;
+     overflow: hidden;
+     background-color: #111111;
+ }
  img {
     margin: 0;
     padding: 0;

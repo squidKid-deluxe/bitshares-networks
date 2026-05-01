@@ -5,11 +5,39 @@ margin: 0;
 padding: 0;
 }
 
+/* Reset html/body inside the generated pool page */
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+/* Override Bootstrap card/card-body that PyVis injects */
+.card {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.card-body {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100% !important;
+}
+
+/* Hide empty h1 that PyVis injects in the head */
+h1:empty {
+    display: none !important;
+}
+
  #mynetwork {
-     width: 100%;
-     height: 100vh;
+     width: 100% !important;
+     height: 100% !important;
      background-color: #111111;
-     border: none;
+     border: none !important;
      position: relative;
      float: left;
  }
@@ -20,7 +48,7 @@ padding: 0;
      top:0px;
      left:0px;
      width: 100%;
-     height: 100vh;
+     height: 100%;
      background-color:rgba(10,10,10,0.8);
      -webkit-transition: all 0.5s ease;
      -moz-transition: all 0.5s ease;
