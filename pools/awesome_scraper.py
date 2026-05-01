@@ -1,36 +1,15 @@
+"""Scrape awesome-bitshares README and generate HTML + latency map GIF."""
+
+import glob
+import os
+
 import markdown
 import requests
-import glob
 from PIL import Image
-import os
-import json
 
-PATH = str(os.path.dirname(os.path.abspath(__file__))) + "/"
+PATH = os.path.dirname(os.path.abspath(__file__)) + "/"
 
-def main():
-    URL = "https://raw.githubusercontent.com/bitshares/awesome-bitshares/master/README.md"
-
-
-    data = requests.get(URL).text
-    html = markdown.markdown(data)
-
-    html = html.replace('src="logo.svg"', 'src="./images/bitshares_logo.svg"')
-    html = html.replace('<a href="', '<a target="_blank" href="')
-    img = (
-        '<center><p><img src="./images/bitshares_logo.svg" alt="BitShares Blockchain" align="center"'
-        ' style="width:25vw"></p></center>'
-    )
-    # html = img + html.split("<h2>Awesome BitShares Blockchain</h2>")[1]
-    # "BTS:BTC": [
-    #     "gateio",
-    #     "bittrex",
-    #     "binance",  # WARN: requires NON-US VPN
-    #     "poloniex",
-    #     "hitbtc",
-    # ],
-
-
-    CEX = """
+CEX = """
     <ul>
     <li><a class=".awesome" target="_blank" href="https://www.gate.io/trade/BTS_BTC">GateIO BTS:BTC</a></li>
     <li><a class=".awesome" target="_blank" href="https://www.gate.io/trade/BTS_USDT">GateIO BTS:USDT</a></li><br>
@@ -43,21 +22,25 @@ def main():
     </ul>
     """
 
-    defaultpage = (
-        "Warning: Being listed here is not endorsement nor does it provide any credibility"
-        " to these projects. Even though the authors of this list have high quality"
-        " standards, limited resources prevent them from keeping this list up-to-date with"
-        " respect to their credibility. Use this list at your own risk and do your own"
-        " research!"
+
+def main():
+    URL = "https://raw.githubusercontent.com/bitshares/awesome-bitshares/master/README.md"
+
+    data = requests.get(URL).text
+    html = markdown.markdown(data)
+
+    html = html.replace('src="logo.svg"', 'src="./images/bitshares_logo.svg"')
+    html = html.replace('<a href="', '<a target="_blank" href="')
+
+    img = (
+        '<center><p><img src="./images/bitshares_logo.svg" alt="BitShares Blockchain" align="center"'
+        ' style="width:25vw"></p></center>'
     )
 
     html = ["<h3>" + i for i in html.split("<h3>")][1:]
-
-
     html = {i.split("</h3>")[0][4:]: i.split("</h3>", 1)[1] for i in html}
 
-
-    text = (  # <link rel='stylesheet' href='main.css'></link>"
+    text = (
         '<DOCTYPE html>\n<html>\n<body>\n<link rel="stylesheet" href="main.css">\n<link'
         ' rel="stylesheet" href="awesomestyle.css">\n<script type="text/javascript"'
         ' src="tabs.js"></script>\n'
@@ -77,18 +60,6 @@ def main():
             f" '{idx}')\">{htm}</button>\n"
         )
     text += "</div>\n"
-    # print(idx)
-
-
-    """
-        <button class="tablinks" onclick="switch_tab(event, '1')">Pools</button>
-        <button class="tablinks" onclick="switch_tab(event, '2')">Home</button>
-        <button class="tablinks" onclick="switch_tab(event, '3')">Explorer</button>
-        <button class="tablinks" onclick="switch_tab(event, '4')">Market Cap</button>
-        <button class="tablinks" onclick="switch_tab(event, '5')">Links</button>
-        <button class="tablinks" onclick="switch_tab(event, '6')">Team</button>
-        <button class="tablinks" onclick="switch_tab(event, '7')">Nodes</button>
-    </div>"""
 
     for idx, htm in enumerate(html):
         text += f'<div id="{idx}" class="tabcontent">'
@@ -102,29 +73,15 @@ def main():
         text += "</div>"
 
     text = text.replace("<a ", '<a class=".awesome" ')
-
-    # print(text)
-
-
-    # print(json.dumps(html, indent=4))
-
-
-    # exit()
-
-    text = text + "</body>\n</html>"
-
+    text += "</body>\n</html>"
 
     print()
 
     with open("awesome.html", "w") as handle:
         handle.write(text)
-        handle.close()
 
     print("generating GIF...")
 
-    # exit()
-
-    # filepaths
     fp_in = PATH + "latency_maps/map_*.png"
     fp_out = PATH + "images/map.gif"
 
@@ -137,9 +94,8 @@ def main():
         to_remove = img_paths.pop(0)
         os.remove(to_remove)
 
-
     imgs = (Image.open(f) for f in sorted(glob.glob(fp_in)))
-    img = next(imgs)  # extract first image from iterator
+    img = next(imgs)
     img.save(
         fp=fp_out,
         format="GIF",
