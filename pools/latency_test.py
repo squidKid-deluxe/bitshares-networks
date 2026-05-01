@@ -106,7 +106,7 @@ def handle_signal(signum, frame):
     global SHUTDOWN
     SHUTDOWN = True
     print("\nInterrupted, shutting down...")
-    sys.exit(0)
+    os._exit(0)
 
 signal.signal(signal.SIGINT, handle_signal)
 signal.signal(signal.SIGTERM, handle_signal)
@@ -805,7 +805,13 @@ def geolocation(unique, pinged):
                     "bts.liuye.tech": "27.195.68.51",
                     "japan.bitshares.apasia.tech": "133.11.93.0"
                 }
-                public_ip = ip_replacements.get(public_ip, socket.gethostbyname(public_ip))
+                hostname = public_ip
+                public_ip = ip_replacements.get(hostname, None)
+                if public_ip is None:
+                    try:
+                        public_ip = socket.gethostbyname(hostname)
+                    except socket.gaierror:
+                        continue
                 public_ips.append(public_ip)
 
             try:
