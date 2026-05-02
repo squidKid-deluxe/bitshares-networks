@@ -66,6 +66,7 @@ jobs:
           cp -r pools/latency_maps /tmp/gh-pages-deploy/latency_maps/ 2>/dev/null || true
           git checkout --orphan gh-pages-new
           git rm -rf . 2>/dev/null || true
+          rm -rf pools/ images/ latency_maps/ 2>/dev/null || true
           cp -r /tmp/gh-pages-deploy/* . 2>/dev/null || true
           git add .
           git commit -m "Deploy $(date -u +%Y-%m-%dT%H:%M:%SZ)"
