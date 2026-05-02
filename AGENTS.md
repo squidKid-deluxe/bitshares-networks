@@ -1,95 +1,45 @@
 # AGENTS.md — BitShares Networks
 
-## What This Repo Does
-
-Visualizes the BitShares DEX liquidity pool network and node latency as interactive HTML maps. Connects to BitShares blockchain via WebSocket to public RPC nodes, fetches pool/asset data, and renders with PyVis (network graph) and matplotlib (latency map).
-
-## Repo Structure
-
-```
-/
-  README.md
-  requirements.txt
-  images/             # Root-level docs images (sample_pools.png)
-  pools/
-    pool_mapper.py      # Main entry: liquidity pool network visualization
-    latency_test.py     # BitShares node latency testing + geolocation
-    main.py             # CI orchestrator: runs pool_mapper + latency_test + awesome_scraper in parallel
-    config.py           # Node list, colors, DETACH/ATTACH pool config, visual settings
-    rpc.py              # WebSocket RPC + Elasticsearch queries for BitShares chain
-    utilities.py        # JSON IPC (concurrent read/write cache), helpers
-    bitshares_nodes.py  # Hardcoded lists of known BitShares public nodes
-    awesome_scraper.py  # Generates animated GIF + explorer.html + awesome.html
-    pipe/               # Runtime cache directory (created at runtime, contains .txt JSON files)
-    latency_maps/       # Saved latency map PNGs
-    website/            # All web assets (HTML, CSS, JS, images)
-      bitshares_network.html  # Main UI entry point
-      *.html / *.css / *.js   # Web assets
-      images/               # Website images (basemap, logos, map.gif)
-```
+Visualizes BitShares DEX liquidity pools and node latency as interactive HTML maps. Connects to BitShares via WebSocket RPC, renders with PyVis and matplotlib.
 
 ## Commands
 
-### Setup
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt   # README has typo: missing "install"
 cd pools
+python3 pool_mapper.py            # interactive CLI menu; optional arg = output filename
+python3 latency_test.py           # several minutes; pings hundreds of nodes
+python3 main.py                   # CI orchestrator: runs all three tools in parallel
 ```
-Note: README says `pip3 -r requirements.txt` — this is a typo, missing `install`.
 
-### Run Pool Mapper (interactive CLI menu)
-```bash
-cd pools
-python3 pool_mapper.py
-```
-Optional: pass an output filename as arg 1 (default: `liquidity_pools.html`).
+## Architecture
 
-### Run Latency Test
-```bash
-cd pools
-python3 latency_test.py
-```
-Takes several minutes — pings hundreds of BitShares nodes via WebSocket.
-
-### Run Full CI Update (pool map + latency + scraper)
-```bash
-cd pools
-python3 main.py
-```
-Runs all three visualizers in parallel with timeouts, then terminates. Used by the daily GitHub Actions workflow.
-
-## Architecture Notes
-
-- **All Python code lives in `pools/`** — the root is just docs, images, and config.
-- **No test framework, linter, formatter, or type checker** exists. Do not invent one without asking.
-- **RPC layer** (`rpc.py`) uses `websocket-client` for sync connections and `aiohttp` for async (latency_test uses async).
-- **Elasticsearch query** in `rpc.py` hits `https://es.bitshares.dev` to find the max pool object ID — this is a live external dependency.
-- **JSON IPC** (`utilities.py:json_ipc`) is a custom concurrent read/write mechanism that stores cache as `.txt` files in `pools/pipe/`. It uses exponential-backoff retries and a tag-based clipping protocol. Auto-creates the `pipe/` dir if missing.
-- **Caching** — pool data, asset names, tickers, and share assets are cached to `pools/pipe/*.txt` across runs. The cache persists and is incrementally updated.
-- **`main.py`** runs three processes concurrently and hard-terminates them after ~1 hour. Designed for CI, not interactive use.
-- **`config.py:DEV = False`** — set to `True` to enable verbose `dprint()` output.
+- All Python code lives in `pools/` — run from that directory (bare imports: `from config import ...`).
+- No test framework, linter, formatter, or type checker exists.
+- `rpc.py` uses `websocket-client` (sync) and `aiohttp` (async for latency test).
+- `utilities.py:json_ipc()` — custom concurrent read/write cache in `pools/pipe/*.txt`. Auto-creates `pipe/` dir.
+- `main.py` spawns three processes and hard-terminates them after ~1 hour. CI-only, not interactive.
+- `config.py:DEV = False` — set `True` for verbose `dprint()` output.
 
 ## CI / GitHub Pages
 
-- Workflow: `.github/workflows/main.yml`
-- Triggers: daily at midnight UTC + manual dispatch
-- Python 3.11 on ubuntu-latest
-- Concurrency group prevents duplicate runs
+- Workflow: `.github/workflows/main.yml` (daily at midnight UTC)
+- Python 3.11, caches pip dependencies
 - Accumulates images from `gh-pages` branch before running `main.py`
-- Deploys to GitHub Pages by force-pushing `gh-pages` branch (serves `pools/` directory)
+- Deploys by copying `pools/website/*` to root of `gh-pages` branch (not `pools/` itself)
+- Uses `git push --force-with-lease` — local gh-pages changes will be overwritten
 
-## Config Quirks (`config.py`)
+## Config (`config.py`)
 
-- `NODES` — 9 WSS endpoints used by pool_mapper (shuffled, first responsive wins)
-- `DETACH` — asset IDs to exclude from map in "DETACH" menu mode
-- `ATTACH` — specific pool IDs to include in "ATTACH only" menu mode
-- `CHUNK = 10` — RPC calls fetch 10 objects at a time
-- `SCALE_WEIGHT = 80` — divisor for edge thickness scaling
-- `DETACH_UNFUNDED = False` — set True to hide empty pools
+- `NODES` — 9 WSS endpoints (shuffled, first responsive wins)
+- `DETACH` — asset IDs to exclude from map
+- `ATTACH` — specific pool IDs to include exclusively
+- `CHUNK = 10` — RPC batch size
+- `SCALE_WEIGHT = 80` — edge thickness divisor
+- `DETACH_UNFUNDED = False` — set `True` to hide empty pools
 
 ## Gotchas
 
-- The `pipe/` cache directory **is committed** — it serves as an aggregate that 3rd party programs read. Keep it in version control; never gitignore it.
-- `pool_mapper.py` imports from `config`, `rpc`, `utilities` as bare names — must be run from `pools/` directory (or have it on `PYTHONPATH`).
-- `latency_test.py` has the same issue — it imports `bitshares_nodes` as a bare module.
-- The workflow uses `git push --force-with-lease` to `gh-pages` — any local gh-pages changes will be overwritten.
+- `pipe/` cache directory **is committed** — serves as an aggregate for 3rd party readers. Never gitignore it.
+- `pool_mapper.py` and `latency_test.py` use bare module imports — must `cd pools` before running.
+- Elasticsearch query in `rpc.py` hits `https://es.bitshares.dev` to find max pool object ID (live external dependency).
