@@ -42,11 +42,13 @@ jobs:
             mkdir -p .old_gh_pages
             git archive gh-pages | tar -x -C .old_gh_pages
             mkdir -p pools/website/images pools/latency_maps
+            # Restore images
             if [ -d .old_gh_pages/images ]; then
               cp -rn .old_gh_pages/images/* pools/website/images/ 2>/dev/null || true
             fi
+            # Restore latency_maps, flattening any nested directories
             if [ -d .old_gh_pages/latency_maps ]; then
-              cp -rn .old_gh_pages/latency_maps/* pools/latency_maps/ 2>/dev/null || true
+              find .old_gh_pages/latency_maps -name "map_*.png" -exec cp {} pools/latency_maps/ \; 2>/dev/null || true
             fi
             rm -rf .old_gh_pages
           else
@@ -60,10 +62,10 @@ jobs:
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "github-actions[bot]"
-          mkdir -p /tmp/gh-pages-deploy
-          cp -r pools/website/* /tmp/gh-pages-deploy/ 2>/dev/null || true
+          mkdir -p /tmp/gh-pages-deploy/website
           mkdir -p /tmp/gh-pages-deploy/latency_maps
-          cp -r pools/latency_maps /tmp/gh-pages-deploy/latency_maps/ 2>/dev/null || true
+          cp -r pools/website/* /tmp/gh-pages-deploy/website/ 2>/dev/null || true
+          cp -r pools/latency_maps/* /tmp/gh-pages-deploy/latency_maps/ 2>/dev/null || true
           git checkout --orphan gh-pages-new
           git rm -rf . 2>/dev/null || true
           rm -rf pools/ images/ latency_maps/ 2>/dev/null || true
