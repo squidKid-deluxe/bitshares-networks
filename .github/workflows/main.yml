@@ -38,17 +38,20 @@ jobs:
 
       - name: Fetch and accumulate data from gh-pages
         run: |
-          git fetch origin gh-pages:gh-pages || true
-          mkdir -p .old_gh_pages
-          git --work-tree=.old_gh_pages checkout gh-pages -- . || true
-          mkdir -p pools/website/images pools/latency_maps
-          if [ -d .old_gh_pages/images ]; then
-            cp -rn .old_gh_pages/images/* pools/website/images/ 2>/dev/null || true
+          if git fetch origin gh-pages:gh-pages 2>/dev/null; then
+            mkdir -p .old_gh_pages
+            git archive gh-pages | tar -x -C .old_gh_pages
+            mkdir -p pools/website/images pools/latency_maps
+            if [ -d .old_gh_pages/images ]; then
+              cp -rn .old_gh_pages/images/* pools/website/images/ 2>/dev/null || true
+            fi
+            if [ -d .old_gh_pages/latency_maps ]; then
+              cp -rn .old_gh_pages/latency_maps/* pools/latency_maps/ 2>/dev/null || true
+            fi
+            rm -rf .old_gh_pages
+          else
+            echo "gh-pages branch does not exist yet, skipping fetch"
           fi
-          if [ -d .old_gh_pages/latency_maps ]; then
-            cp -rn .old_gh_pages/latency_maps/* pools/latency_maps/ 2>/dev/null || true
-          fi
-          rm -rf .old_gh_pages
 
       - name: Run pool mapper, latency test, and scraper
         run: cd pools; python3 main.py; cd ..
@@ -57,15 +60,18 @@ jobs:
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "github-actions[bot]"
+          mkdir -p /tmp/gh-pages-deploy
+          cp -r pools/website/* /tmp/gh-pages-deploy/ 2>/dev/null || true
+          mkdir -p /tmp/gh-pages-deploy/latency_maps
+          cp -r pools/latency_maps /tmp/gh-pages-deploy/latency_maps/ 2>/dev/null || true
           git checkout --orphan gh-pages-new
           git rm -rf . 2>/dev/null || true
-          cp -r pools/website/* . 2>/dev/null || true
-          mkdir -p latency_maps
-          cp -r pools/latency_maps latency_maps/ 2>/dev/null || true
+          cp -r /tmp/gh-pages-deploy/* . 2>/dev/null || true
           git add .
           git commit -m "Deploy $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push --force-with-lease origin gh-pages-new:gh-pages
           git checkout main
           git branch -D gh-pages-new
+          rm -rf /tmp/gh-pages-deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
