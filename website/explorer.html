@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="main.css">
+<script type="text/javascript" src="tabs.js"></script>
+<style>.tabcontent{height:calc(100vh - 4vh);}</style>
+</head>
+<body>
+<div class="explorertab">
+<button onmousedown="if(event.button===1)window.open('https://wallet.bitshares.org/#/explorer/','_blank')" class="tablinks" onclick="switch_tab(event, 'E0')">built-in explorer</button>
+<button onmousedown="if(event.button===1)window.open('https://blocksights.info','_blank')" class="tablinks" onclick="switch_tab(event, 'E1')">blocksights.info</button>
+<button onmousedown="if(event.button===1)window.open('https://www.bitshareschain.com','_blank')" class="tablinks" onclick="switch_tab(event, 'E2')">bitshareschain.com</button>
+<button onmousedown="if(event.button===1)window.open('https://bitshares.network','_blank')" class="tablinks" onclick="switch_tab(event, 'E3')">bitshares.network</button>
+<button onmousedown="if(event.button===1)window.open('https://btslens.pages.dev','_blank')" class="tablinks" class="active" onclick="switch_tab(event, 'E4')">BTS Lens</button>
+<button onmousedown="if(event.button===1)window.open('https://bitshares-explorer.lovable.app','_blank')" class="tablinks" onclick="switch_tab(event, 'E5')">bitshares-explorer.lovable.app</button>
+</div>
+<object id="E0" class="tabcontent" type="text/html" data-src="https://wallet.bitshares.org/#/explorer/"></object>
+<object id="E1" class="tabcontent" type="text/html" data-src="https://blocksights.info"></object>
+<object id="E2" class="tabcontent" type="text/html" data-src="https://www.bitshareschain.com"></object>
+<object id="E3" class="tabcontent" type="text/html" data-src="https://bitshares.network"></object>
+<object id="E4" class="tabcontent" type="text/html" data="https://btslens.pages.dev" style="display:block;"></object>
+<object id="E5" class="tabcontent" type="text/html" data-src="https://bitshares-explorer.lovable.app"></object>
+</body>
+</html>

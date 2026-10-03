@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTS Market Data</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #111111;
+            min-height: 100vh;
+            color: #fff;
+        }
+        .widget-container {
+            width: 100%;
+            background: #1a1a2e;
+            overflow: hidden;
+        }
+        .chart-section {
+            padding: 16px;
+            background: #111111;
+        }
+        .tradingview-widget-container {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .ticker-section {
+            padding: 20px 24px;
+            background: #1a1a2e;
+            border-top: 1px solid #333344;
+            display: flex;
+            justify-content: center;
+        }
+        .ticker-section .coinmarketcap-currency-widget {
+            max-width: 400px;
+            width: 100%;
+        }
+        .widget-footer {
+            background: #2d2d44;
+            padding: 12px 24px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            border-top: 1px solid #333344;
+        }
+    </style>
+</head>
+<body>
+<div class="widget-container">
+    <div class="chart-section">
+        <div class="tradingview-widget-container">
+            <div id="tradingview_chart"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+            <script type="text/javascript">
+            new TradingView.widget({
+                "width": "100%",
+                "height": "450",
+                "symbol": "MEXC:BTSUSDT",
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#111111",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_chart",
+                "hide_top_toolbar": false,
+                "hide_legend": false,
+                "save_image": true,
+                "backgroundColor": "#111111",
+                "gridColor": "#2d2d44"
+            });
+            </script>
+        </div>
+    </div>
+    <div class="ticker-section">
+        <script type="text/javascript" src="https://files.coinmarketcap.com/static/widget/currency.js"></script>
+        <div class="coinmarketcap-currency-widget"
+             data-currencyid="463"
+             data-base="USD"
+             data-secondary=""
+             data-ticker="true"
+             data-rank="true"
+             data-marketcap="true"
+             data-volume="true"
+             data-statsticker="true"
+             data-stats="USD"></div>
+    </div>
+    <div class="widget-footer">
+        Data provided by TradingView &amp; CoinMarketCap | Real-time market data
+    </div>
+</div>
+</body>
+</html>
